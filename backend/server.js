@@ -1053,7 +1053,7 @@ app.get('/api/relatorios/evolucao-noshow', authMiddleware, async (req, res) => {
     } catch (err) { sendError(res, err); }
 });
 // Rota de Emergência para Resetar Senha
-app.get('/api/reset-senha-adm', async (req, res) => {
+app.get('/api/reset-senha-admin', async (req, res) => {
   try {
     // Gera um hash novo e válido usando o próprio servidor
     const novaSenhaHash = await bcrypt.hash('senha123', 10);
@@ -1061,13 +1061,13 @@ app.get('/api/reset-senha-adm', async (req, res) => {
     // Atualiza o usuário admin
     const [result] = await db.query(
       'UPDATE usuario SET senha = ? WHERE nome_usuario = ?', 
-      [novaSenhaHash, 'adm']
+      [novaSenhaHash, 'admin']
     );
 
     if (result.affectedRows > 0) {
-      res.send('<h1>Sucesso!</h1><p>A senha do usuário <b>adm</b> foi resetada para: <b>senha123</b></p>');
+      res.send('<h1>Sucesso!</h1><p>A senha do usuário <b>admin</b> foi resetada para: <b>senha123</b></p>');
     } else {
-      res.send('<h1>Erro!</h1><p>Usuário adm não encontrado no banco.</p>');
+      res.send('<h1>Erro!</h1><p>Usuário admin não encontrado no banco.</p>');
     }
   } catch (err) {
     res.status(500).send('Erro ao resetar: ' + err.message);
