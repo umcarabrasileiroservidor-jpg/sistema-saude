@@ -37,7 +37,7 @@ const DB_CONFIG = {
   connectionLimit: 10,
   queueLimit: 0,
 };
-
+const db = mysql.createPool(DB_CONFIG);
 // --- Helpers ---
 const sendError = (res, err, message = 'Erro interno do servidor') => {
     console.error(err);
