@@ -225,7 +225,26 @@ export default function Atendimentos() {
         return isoString;
     }
   }
+// CORREÇÃO DE DATA/HORA VISUAL
+  const formatDateTime = (isoString: string | undefined | null) => {
+    if (!isoString) return { date: '-', time: '-', fullDate: '-' };
+    try {
+        // Cria a data
+        const date = new Date(isoString);
+        
+        // ADICIONA o deslocamento do fuso horário (3 horas) de volta para visualização
+        const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+        const offsetDate = new Date(date.getTime() + userTimezoneOffset);
 
+        return {
+            date: offsetDate.toLocaleDateString('pt-BR'),
+            time: offsetDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+            fullDate: offsetDate.toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+        };
+    } catch {
+        return { date: isoString, time: '-', fullDate: isoString };
+    }
+  }
   // Lógica de Filtro
   const atendimentosFiltrados = atendimentos.filter(at => {
       const matchData = !filtroData || at.data_atendimento.startsWith(filtroData);
