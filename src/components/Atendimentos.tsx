@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import InputMask from 'react-input-mask'; // Importa a máscara
+import InputMask from 'react-input-mask';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Badge } from './ui/badge';
 import { Textarea } from './ui/textarea';
-import { Plus, Edit, Trash2, Activity } from 'lucide-react';
+import { Plus, Edit, Trash2, Activity, Search } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
@@ -28,7 +28,7 @@ interface Atendimento {
 interface Paciente {
   id_paciente: number;
   nome_completo: string;
-  cpf: string; // Adicionado CPF para filtro
+  cpf: string;
 }
 
 interface Profissional {
@@ -64,14 +64,12 @@ const apiFetch = async (endpoint: string, method: string, body: any = null) => {
   return data;
 };
 
-
 export default function Atendimentos() {
   const [atendimentos, setAtendimentos] = useState<Atendimento[]>([]);
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
   const [profissionais, setProfissionais] = useState<Profissional[]>([]);
   const [currentUser, setCurrentUser] = useState<any>(null);
 
-  // Estados para Filtros
   const [filtroData, setFiltroData] = useState<string>('');
   const [filtroCpf, setFiltroCpf] = useState<string>('');
   const [filtroNome, setFiltroNome] = useState<string>('');
@@ -82,7 +80,6 @@ export default function Atendimentos() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
 
   const fetchData = async () => {
     try {
@@ -102,7 +99,7 @@ export default function Atendimentos() {
       setPacientes([]);
       setProfissionais([]);
     } finally {
-      setIsLoading(false);
+      setTimeout(() => setIsLoading(false), 300);
     }
   };
 
@@ -113,7 +110,6 @@ export default function Atendimentos() {
     }
     fetchData();
   }, []);
-
 
   const handleAdd = () => {
     setEditingAtendimento(null);
@@ -128,16 +124,20 @@ export default function Atendimentos() {
 
     if (atendimento.data_atendimento) {
         try {
-            // CORREÇÃO DEFINITIVA DE DATA/HORA
+            // CORREÇÃO DE FUSO HORÁRIO (PARA EDIÇÃO)
             const d = new Date(atendimento.data_atendimento);
             
-            const ano = d.getFullYear();
-            const mes = String(d.getMonth() + 1).padStart(2, '0');
-            const dia = String(d.getDate()).padStart(2, '0');
-            const hora = String(d.getHours()).padStart(2, '0');
-            const minuto = String(d.getMinutes()).padStart(2, '0');
+            // Adiciona o offset para compensar a conversão do navegador
+            const userTimezoneOffset = d.getTimezoneOffset() * 60000;
+            const dataLocal = new Date(d.getTime() + userTimezoneOffset);
+            
+            const ano = dataLocal.getFullYear();
+            const mes = String(dataLocal.getMonth() + 1).padStart(2, '0');
+            const dia = String(dataLocal.getDate()).padStart(2, '0');
+            const hora = String(dataLocal.getHours()).padStart(2, '0');
+            const minuto = String(dataLocal.getMinutes()).padStart(2, '0');
 
-            // Formato exigido pelo input datetime-local: YYYY-MM-DDTHH:mm
+            // Formato para o input: YYYY-MM-DDTHH:mm
             dataHoraValue = `${ano}-${mes}-${dia}T${hora}:${minuto}`;
             
         } catch (e) { console.error("Erro ao formatar data:", e); }
@@ -147,7 +147,7 @@ export default function Atendimentos() {
       id_paciente: String(atendimento.id_paciente),
       id_profissional: String(atendimento.id_profissional),
       tipo_atendimento: atendimento.tipo_atendimento || 'Consulta',
-      data_atendimento: dataHoraValue, // Usa o valor formatado manualmente
+      data_atendimento: dataHoraValue,
       status: atendimento.status || 'Realizado',
       observacoes: atendimento.observacoes || ''
     });
@@ -183,8 +183,7 @@ export default function Atendimentos() {
     } catch (err: any) {
       setError(err.message);
       alert(`Erro ao salvar atendimento: ${err.message}`);
-    } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -197,12 +196,10 @@ export default function Atendimentos() {
       } catch (err: any) {
         setError(err.message);
         alert(`Erro ao excluir atendimento: ${err.message}`);
-      } finally {
         setIsLoading(false);
       }
     }
   };
-
 
   const getStatusColor = (status: string): "default" | "secondary" | "destructive" | "outline" => {
     switch (status) {
@@ -214,37 +211,24 @@ export default function Atendimentos() {
     }
   };
 
+  // --- CORREÇÃO DE DATA/HORA PARA VISUALIZAÇÃO NA TABELA ---
   const formatDisplayDateTime = (isoString: string | undefined | null): string => {
     if (!isoString) return '-';
     try {
-        return new Date(isoString).toLocaleString('pt-BR', {
+        const date = new Date(isoString);
+        // Adiciona o offset para mostrar a hora que foi salva no banco, sem a subtração do navegador
+        const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+        const offsetDate = new Date(date.getTime() + userTimezoneOffset);
+
+        return offsetDate.toLocaleString('pt-BR', {
             day: '2-digit', month: '2-digit', year: 'numeric',
             hour: '2-digit', minute: '2-digit'
         });
     } catch {
         return isoString;
     }
-  }
-// CORREÇÃO DE DATA/HORA VISUAL
-  const formatDateTime = (isoString: string | undefined | null) => {
-    if (!isoString) return { date: '-', time: '-', fullDate: '-' };
-    try {
-        // Cria a data
-        const date = new Date(isoString);
-        
-        // ADICIONA o deslocamento do fuso horário (3 horas) de volta para visualização
-        const userTimezoneOffset = date.getTimezoneOffset() * 60000;
-        const offsetDate = new Date(date.getTime() + userTimezoneOffset);
+  };
 
-        return {
-            date: offsetDate.toLocaleDateString('pt-BR'),
-            time: offsetDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-            fullDate: offsetDate.toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
-        };
-    } catch {
-        return { date: isoString, time: '-', fullDate: isoString };
-    }
-  }
   // Lógica de Filtro
   const atendimentosFiltrados = atendimentos.filter(at => {
       const matchData = !filtroData || at.data_atendimento.startsWith(filtroData);
@@ -263,13 +247,12 @@ export default function Atendimentos() {
       return matchData && matchCpf && matchNome;
   });
 
-
   const userRole = currentUser?.papel;
   const canManage = userRole === 'Administrador' || userRole === 'Profissional';
   const canDelete = userRole === 'Administrador';
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fadeIn">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Atendimentos</h1>
@@ -278,7 +261,7 @@ export default function Atendimentos() {
         {canManage && (
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button onClick={handleAdd} className="bg-blue-600 hover:bg-blue-700">
+              <Button onClick={handleAdd} className="bg-blue-600 hover:bg-blue-700 shadow hover:shadow-lg transition-all">
                 <Plus className="w-4 h-4 mr-2" />
                 Novo Atendimento
               </Button>
@@ -288,7 +271,7 @@ export default function Atendimentos() {
                 <DialogTitle>{editingAtendimento ? 'Editar Atendimento' : 'Novo Atendimento'}</DialogTitle>
                 <DialogDescription>Preencha os dados do atendimento</DialogDescription>
               </DialogHeader>
-              <div className="space-y-4">
+              <div className="space-y-4 pt-4 max-h-[70vh] overflow-y-auto pr-2">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label>Paciente</Label>
@@ -371,81 +354,15 @@ export default function Atendimentos() {
         </div>
       )}
 
-      {/* Cards de Resumo */}
-      {!isLoading && !error && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600">Atendimentos Hoje</p>
-                    <h3 className="text-2xl font-bold text-gray-900">
-                      {atendimentos.filter(a => a.data_atendimento.startsWith(new Date().toISOString().split('T')[0])).length}
-                    </h3>
-                  </div>
-                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <Activity className="w-6 h-6 text-blue-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-             <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600">Em Andamento</p>
-                    <h3 className="text-2xl font-bold text-gray-900">
-                      {atendimentos.filter(a => a.status === 'Em Andamento').length}
-                    </h3>
-                  </div>
-                  <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                    <Activity className="w-6 h-6 text-yellow-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600">Concluídos</p>
-                    <h3 className="text-2xl font-bold text-gray-900">
-                      {atendimentos.filter(a => a.status === 'Concluído').length}
-                    </h3>
-                  </div>
-                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                    <Activity className="w-6 h-6 text-green-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-             <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600">Total</p>
-                    <h3 className="text-2xl font-bold text-gray-900">{atendimentos.length}</h3>
-                  </div>
-                  <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
-                    <Activity className="w-6 h-6 text-gray-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-      )}
-
-
-      {/* Lista de Atendimentos */}
       <Card>
         <CardHeader>
-          {/* Container para Título e Filtros */}
           <div className="flex flex-col md:flex-row justify-between md:items-start gap-4">
             <div>
               <CardTitle>Lista de Atendimentos</CardTitle>
-              <CardDescription>Histórico completo de atendimentos</CardDescription>
+              <CardDescription>
+                 {isLoading ? 'Carregando...' : `Visualizando ${atendimentosFiltrados.length} ${atendimentosFiltrados.length !== 1 ? 'atendimentos' : 'atendimento'}`}
+              </CardDescription>
             </div>
-            {/* Inputs de Filtro */}
             <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                <div>
                   <Label htmlFor="filtroDataAtendimento" className="text-xs font-medium">Filtrar Data</Label>
@@ -470,14 +387,17 @@ export default function Atendimentos() {
                </div>
                <div>
                   <Label htmlFor="filtroNomeAtendimento" className="text-xs font-medium">Filtrar Nome</Label>
-                  <Input
-                    id="filtroNomeAtendimento"
-                    type="text"
-                    placeholder="Nome do Paciente..."
-                    value={filtroNome}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFiltroNome(e.target.value)}
-                    className="h-9 flex-1"
-                  />
+                  <div className="relative">
+                      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+                      <Input
+                        id="filtroNomeAtendimento"
+                        type="text"
+                        placeholder="Nome..."
+                        value={filtroNome}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFiltroNome(e.target.value)}
+                        className="h-9 pl-8 flex-1"
+                      />
+                  </div>
                </div>
                {(filtroData || filtroCpf || filtroNome) && (
                    <Button 
@@ -516,7 +436,6 @@ export default function Atendimentos() {
                       </div>
                     </TableCell>
                   </TableRow>
-                // Modificado aqui para usar atendimentosFiltrados
                 ) : atendimentosFiltrados.length === 0 ? ( 
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-8 text-gray-500">
@@ -524,12 +443,12 @@ export default function Atendimentos() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  // Modificado aqui para usar atendimentosFiltrados
                   atendimentosFiltrados 
                     .sort((a, b) => b.data_atendimento.localeCompare(a.data_atendimento))
                     .map((atendimento: Atendimento) => (
-                      <TableRow key={atendimento.id_atendimento}>
+                      <TableRow key={atendimento.id_atendimento} className="hover:bg-muted/50 transition-colors">
                         <TableCell>
+                          {/* AQUI ESTA A CHAMADA DA FUNÇÃO CORRIGIDA */}
                           {formatDisplayDateTime(atendimento.data_atendimento)}
                         </TableCell>
                         <TableCell>{atendimento.nome_paciente || 'N/A'}</TableCell>
@@ -548,13 +467,13 @@ export default function Atendimentos() {
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
                             {canManage && (
-                              <Button variant="ghost" size="sm" onClick={() => handleEdit(atendimento)} title="Editar Atendimento">
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(atendimento)} title="Editar Atendimento">
                                 <Edit className="w-4 h-4" />
                               </Button>
                             )}
                             {canDelete && (
-                              <Button variant="ghost" size="sm" onClick={() => handleDelete(atendimento.id_atendimento)} title="Excluir Atendimento">
-                                <Trash2 className="w-4 h-4 text-red-600" />
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(atendimento.id_atendimento)} title="Excluir Atendimento">
+                                <Trash2 className="w-4 h-4 text-red-600 hover:text-red-700" />
                               </Button>
                             )}
                           </div>
