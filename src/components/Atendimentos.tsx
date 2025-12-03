@@ -124,18 +124,33 @@ export default function Atendimentos() {
   const handleEdit = (atendimento: Atendimento) => {
     setEditingAtendimento(atendimento);
 
-    let dataHoraLocal = '';
+    let dataISO = '';
+    let horaISO = '';
+
     if (atendimento.data_atendimento) {
         try {
-            dataHoraLocal = atendimento.data_atendimento.substring(0, 16);
+            // CORREÇÃO DE FUSO HORÁRIO
+            const d = new Date(atendimento.data_atendimento);
+            const offset = d.getTimezoneOffset() * 60000;
+            const dataLocal = new Date(d.getTime() - offset);
+            
+            dataISO = dataLocal.toISOString().split('T')[0]; // YYYY-MM-DD
+            // Pega a hora e minuto do meio da string ISO ajustada
+            horaISO = dataLocal.toISOString().split('T')[1].substring(0, 5); 
+            
+            // Combina para o formato datetime-local (YYYY-MM-DDTHH:mm)
+            // O input datetime-local precisa da string exata assim
         } catch (e) { console.error("Erro ao formatar data:", e); }
     }
+    
+    // Monta a string para o input datetime-local
+    const dataHoraValue = (dataISO && horaISO) ? `${dataISO}T${horaISO}` : '';
 
     setFormData({
       id_paciente: String(atendimento.id_paciente),
       id_profissional: String(atendimento.id_profissional),
       tipo_atendimento: atendimento.tipo_atendimento || 'Consulta',
-      data_atendimento: dataHoraLocal,
+      data_atendimento: dataHoraValue,
       status: atendimento.status || 'Realizado',
       observacoes: atendimento.observacoes || ''
     });

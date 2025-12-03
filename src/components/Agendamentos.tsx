@@ -120,9 +120,16 @@ export default function Agendamentos() {
 
   const handleEdit = (agendamento: Agendamento) => {
     setEditingAgendamento(agendamento);
-    const dataHora = new Date(agendamento.data_hora);
-    const dataISO = dataHora.toISOString().split('T')[0];
-    const horaISO = dataHora.toTimeString().split(' ')[0].substring(0, 5);
+    
+    // CORREÇÃO DE FUSO HORÁRIO
+    // Cria a data baseada na string que vem do banco
+    const d = new Date(agendamento.data_hora);
+    // Compensa o fuso horário do navegador para pegar a data/hora "visual" correta
+    const offset = d.getTimezoneOffset() * 60000;
+    const dataLocal = new Date(d.getTime() - offset);
+
+    const dataISO = dataLocal.toISOString().split('T')[0]; // YYYY-MM-DD
+    const horaISO = dataLocal.toISOString().split('T')[1].substring(0, 5); // HH:mm
 
     setFormData({
       id_paciente: String(agendamento.id_paciente),
