@@ -121,21 +121,26 @@ export default function Agendamentos() {
   const handleEdit = (agendamento: Agendamento) => {
     setEditingAgendamento(agendamento);
     
-    // CORREÇÃO DE FUSO HORÁRIO
-    // Cria a data baseada na string que vem do banco
+    // CORREÇÃO DEFINITIVA DE DATA/HORA
     const d = new Date(agendamento.data_hora);
-    // Compensa o fuso horário do navegador para pegar a data/hora "visual" correta
-    const offset = d.getTimezoneOffset() * 60000;
-    const dataLocal = new Date(d.getTime() - offset);
+    
+    // Pega os dados locais do navegador (Brasil) um por um
+    const ano = d.getFullYear();
+    const mes = String(d.getMonth() + 1).padStart(2, '0'); // Mês começa em 0
+    const dia = String(d.getDate()).padStart(2, '0');
+    
+    const hora = String(d.getHours()).padStart(2, '0');
+    const minuto = String(d.getMinutes()).padStart(2, '0');
 
-    const dataISO = dataLocal.toISOString().split('T')[0]; // YYYY-MM-DD
-    const horaISO = dataLocal.toISOString().split('T')[1].substring(0, 5); // HH:mm
+    // Monta as strings manualmente: YYYY-MM-DD e HH:mm
+    const dataCorreta = `${ano}-${mes}-${dia}`;
+    const horaCorreta = `${hora}:${minuto}`;
 
     setFormData({
       id_paciente: String(agendamento.id_paciente),
       id_profissional: String(agendamento.id_profissional),
-      data: dataISO,
-      hora: horaISO,
+      data: dataCorreta, // Usa a data montada manualmente
+      hora: horaCorreta, // Usa a hora montada manualmente
       status: agendamento.status || 'Confirmado',
       historico_alteracao: agendamento.historico_alteracao || ''
     });

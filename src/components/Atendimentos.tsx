@@ -124,33 +124,30 @@ export default function Atendimentos() {
   const handleEdit = (atendimento: Atendimento) => {
     setEditingAtendimento(atendimento);
 
-    let dataISO = '';
-    let horaISO = '';
+    let dataHoraValue = '';
 
     if (atendimento.data_atendimento) {
         try {
-            // CORREÇÃO DE FUSO HORÁRIO
+            // CORREÇÃO DEFINITIVA DE DATA/HORA
             const d = new Date(atendimento.data_atendimento);
-            const offset = d.getTimezoneOffset() * 60000;
-            const dataLocal = new Date(d.getTime() - offset);
             
-            dataISO = dataLocal.toISOString().split('T')[0]; // YYYY-MM-DD
-            // Pega a hora e minuto do meio da string ISO ajustada
-            horaISO = dataLocal.toISOString().split('T')[1].substring(0, 5); 
+            const ano = d.getFullYear();
+            const mes = String(d.getMonth() + 1).padStart(2, '0');
+            const dia = String(d.getDate()).padStart(2, '0');
+            const hora = String(d.getHours()).padStart(2, '0');
+            const minuto = String(d.getMinutes()).padStart(2, '0');
+
+            // Formato exigido pelo input datetime-local: YYYY-MM-DDTHH:mm
+            dataHoraValue = `${ano}-${mes}-${dia}T${hora}:${minuto}`;
             
-            // Combina para o formato datetime-local (YYYY-MM-DDTHH:mm)
-            // O input datetime-local precisa da string exata assim
         } catch (e) { console.error("Erro ao formatar data:", e); }
     }
     
-    // Monta a string para o input datetime-local
-    const dataHoraValue = (dataISO && horaISO) ? `${dataISO}T${horaISO}` : '';
-
     setFormData({
       id_paciente: String(atendimento.id_paciente),
       id_profissional: String(atendimento.id_profissional),
       tipo_atendimento: atendimento.tipo_atendimento || 'Consulta',
-      data_atendimento: dataHoraValue,
+      data_atendimento: dataHoraValue, // Usa o valor formatado manualmente
       status: atendimento.status || 'Realizado',
       observacoes: atendimento.observacoes || ''
     });
